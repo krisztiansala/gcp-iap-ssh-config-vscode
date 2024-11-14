@@ -1,0 +1,125 @@
+{
+  "name": "vscode-gcp-iap-ssh",
+  "displayName": "GCP IAP SSH Config",
+  "description": "Configure GCP instances for Remote SSH access through IAP",
+  "version": "0.1.0",
+  "engines": {
+    "vscode": "^1.60.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onCommand:gcpIapSsh.configureInstanceWithForm",
+    "onCommand:gcpIapSsh.addIAPConfig",
+    "onView:gcp-instance-config"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "gcpIapSsh.configureInstanceWithForm",
+        "title": "GCP IAP: Configure Instance with Form"
+      },
+      {
+        "command": "gcpIapSsh.addIAPConfig",
+        "title": "GCP IAP: Add IAP Config"
+      },
+      {
+        "command": "gcp-instance-code.configureConnection",
+        "title": "Configure GCP Connection",
+        "icon": "$(gear)"
+      },
+      {
+        "command": "gcp-instance-code.editConfig",
+        "title": "Edit Configuration"
+      },
+      {
+        "command": "gcp-instance-code.runBinary",
+        "title": "Run GCP Operation",
+        "icon": "$(play)"
+      }
+    ],
+    "configuration": {
+      "title": "GCP IAP SSH",
+      "properties": {
+        "gcpIapSsh.binaryPath": {
+          "type": "string",
+          "default": null,
+          "description": "Custom path to the gcp-iap-ssh-config binary"
+        },
+        "gcpIapSsh.sshConfigPath": {
+          "type": "string",
+          "default": null,
+          "description": "Custom path to SSH config file"
+        },
+        "gcpIapSsh.defaultProject": {
+          "type": "string",
+          "default": "",
+          "description": "Default GCP project ID to use"
+        },
+        "gcpIapSsh.autoUpdate": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically check for binary updates"
+        }
+      }
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "gcp-instance-explorer",
+          "title": "GCP Instance",
+          "icon": "resources/cloud.svg"
+        }
+      ]
+    },
+    "views": {
+      "gcp-instance-explorer": [
+        {
+          "type": "webview",
+          "id": "gcp-instance-config",
+          "name": "Configuration"
+        }
+      ]
+    },
+    "menus": {
+      "view/title": [
+        {
+          "command": "gcp-instance-code.configureConnection",
+          "when": "view == gcp-instance-config",
+          "group": "navigation"
+        },
+        {
+          "command": "gcp-instance-code.runBinary",
+          "when": "view == gcp-instance-config",
+          "group": "navigation"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run package",
+    "compile": "npm run check-types && npm run lint && node esbuild.js",
+    "watch": "npm-run-all -p watch:*",
+    "watch:esbuild": "node esbuild.js --watch",
+    "watch:tsc": "tsc --noEmit --watch --project tsconfig.json",
+    "package": "npm run check-types && npm run lint && node esbuild.js --production",
+    "compile-tests": "tsc -p . --outDir out",
+    "watch-tests": "tsc -p . -w --outDir out",
+    "pretest": "npm run compile-tests && npm run compile && npm run lint",
+    "check-types": "tsc --noEmit",
+    "lint": "eslint src",
+    "test": "vscode-test"
+  },
+  "devDependencies": {
+    "@types/node": "^16.x",
+    "@types/vscode": "^1.60.0",
+    "@typescript-eslint/eslint-plugin": "^5.x",
+    "@typescript-eslint/parser": "^5.x",
+    "esbuild": "^0.24.0",
+    "eslint": "^8.x",
+    "typescript": "^4.x"
+  },
+  "icon": "resources/gcp-icon.png"
+}
