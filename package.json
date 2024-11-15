@@ -46,7 +46,7 @@
         {
           "id": "gcp-instance-explorer",
           "title": "GCP IAP SSH config",
-          "icon": "resources/cloud.svg"
+          "icon": "resources/cloud.png"
         }
       ]
     },
