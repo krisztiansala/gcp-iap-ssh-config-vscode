@@ -60,8 +60,7 @@
       ]
     },
     "menus": {
-      "view/title": [
-      ]
+      "view/title": []
     }
   },
   "scripts": {
@@ -71,6 +70,7 @@
     "watch:esbuild": "node esbuild.js --watch",
     "watch:tsc": "tsc --noEmit --watch --project tsconfig.json",
     "package": "npm run check-types && npm run lint && node esbuild.js --production",
+    "vsce": "vsce package",
     "compile-tests": "tsc -p . --outDir out",
     "watch-tests": "tsc -p . -w --outDir out",
     "pretest": "npm run compile-tests && npm run compile && npm run lint",
@@ -83,6 +83,7 @@
     "@types/vscode": "^1.60.0",
     "@typescript-eslint/eslint-plugin": "^5.x",
     "@typescript-eslint/parser": "^5.x",
+    "@vscode/vsce": "^3.2.1",
     "esbuild": "^0.24.0",
     "eslint": "^8.x",
     "typescript": "^4.x"
