@@ -27,7 +27,7 @@ export class GCPIapService {
       const [sshCmd, sshOptions] = await this.getSSHCommand(projectId, instanceName, zone);
 
       if (!sshOptions) {
-        throw new Error("Failed to get SSH configuration from gcloud");
+        throw new Error("Failed to get SSH options from gcloud output");
       }
 
       // Ensure .ssh directory exists
@@ -39,7 +39,6 @@ export class GCPIapService {
 
       this.logger.log(`Successfully configured IAP SSH for instance ${instanceName}`);
     } catch (error) {
-      this.logger.log(`Error: ${error}`);
       throw error;
     }
   }
@@ -83,8 +82,7 @@ export class GCPIapService {
       }
       return [sshCmd, options];
     } catch (error) {
-      this.logger.log(`Error executing gcloud command: ${error}`);
-      throw new Error(`Failed to get SSH configuration: ${error}`);
+      throw new Error(`Failed to get SSH configuration from gcloud: ${error}`);
     }
   }
 

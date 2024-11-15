@@ -3,6 +3,11 @@
   "displayName": "GCP IAP SSH Config",
   "description": "Configure GCP instances for Remote SSH access through IAP",
   "version": "0.1.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/krisztiansala/gcp-iap-ssh-config-vscode.git"
+  },
+  "license": "MIT",
   "engines": {
     "vscode": "^1.60.0"
   },
@@ -10,44 +15,20 @@
     "Other"
   ],
   "activationEvents": [
-    "onCommand:gcpIapSsh.configureInstanceWithForm",
-    "onCommand:gcpIapSsh.addIAPConfig",
+    "onCommand:gcpIapSsh.configureInstance",
     "onView:gcp-instance-config"
   ],
   "main": "./dist/extension.js",
   "contributes": {
     "commands": [
       {
-        "command": "gcpIapSsh.configureInstanceWithForm",
-        "title": "GCP IAP: Configure Instance with Form"
-      },
-      {
-        "command": "gcpIapSsh.addIAPConfig",
-        "title": "GCP IAP: Add IAP Config"
-      },
-      {
-        "command": "gcp-instance-code.configureConnection",
-        "title": "Configure GCP Connection",
-        "icon": "$(gear)"
-      },
-      {
-        "command": "gcp-instance-code.editConfig",
-        "title": "Edit Configuration"
-      },
-      {
-        "command": "gcp-instance-code.runBinary",
-        "title": "Run GCP Operation",
-        "icon": "$(play)"
+        "command": "gcpIapSsh.configureInstance",
+        "title": "GCP IAP: Configure Instance"
       }
     ],
     "configuration": {
       "title": "GCP IAP SSH",
       "properties": {
-        "gcpIapSsh.binaryPath": {
-          "type": "string",
-          "default": null,
-          "description": "Custom path to the gcp-iap-ssh-config binary"
-        },
         "gcpIapSsh.sshConfigPath": {
           "type": "string",
           "default": null,
@@ -57,11 +38,6 @@
           "type": "string",
           "default": "",
           "description": "Default GCP project ID to use"
-        },
-        "gcpIapSsh.autoUpdate": {
-          "type": "boolean",
-          "default": true,
-          "description": "Automatically check for binary updates"
         }
       }
     },
@@ -85,16 +61,6 @@
     },
     "menus": {
       "view/title": [
-        {
-          "command": "gcp-instance-code.configureConnection",
-          "when": "view == gcp-instance-config",
-          "group": "navigation"
-        },
-        {
-          "command": "gcp-instance-code.runBinary",
-          "when": "view == gcp-instance-config",
-          "group": "navigation"
-        }
       ]
     }
   },
@@ -121,5 +87,5 @@
     "eslint": "^8.x",
     "typescript": "^4.x"
   },
-  "icon": "resources/gcp-icon.png"
+  "icon": "resources/cloud.png"
 }

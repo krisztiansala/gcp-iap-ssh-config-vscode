@@ -2,31 +2,11 @@
 
 This VS Code extension simplifies connecting to Google Cloud Platform (GCP) instances through Identity-Aware Proxy (IAP) tunneling. It integrates with VS Code's Remote SSH functionality to make connecting to your GCP instances seamless.
 
-## Features
-
-- Automatically downloads and manages the gcp-iap-ssh-config binary for your operating system
-- Adds SSH configurations for GCP instances with a simple command palette interface
-- Integrates with VS Code Remote SSH for easy connection management
-- Supports multiple GCP projects and instances
-- Provides a user-friendly interface for managing IAP SSH configurations
-
-<!-- ![Configure GCP Instance](images/configure-instance.gif) -->
-
 ## Requirements
 
 - Visual Studio Code 1.60.0 or higher
 - Google Cloud SDK (`gcloud`) installed and configured
 - Appropriate IAP permissions configured in your GCP project
-- Remote SSH extension installed
-
-## Extension Settings
-
-This extension contributes the following settings:
-
-* `gcpIapSsh.binaryPath`: Custom path to the gcp-iap-ssh-config binary (optional)
-* `gcpIapSsh.sshConfigPath`: Custom path to SSH config file (defaults to ~/.ssh/config)
-* `gcpIapSsh.defaultProject`: Default GCP project ID to use
-* `gcpIapSsh.autoUpdate`: Automatically check for binary updates (default: true)
 
 ## Usage
 
@@ -37,17 +17,7 @@ This extension contributes the following settings:
    - GCP Project
    - Instance
    - Zone
-5. The extension will automatically:
-   - Download the appropriate binary (if needed)
-   - Configure your SSH settings
-   - Make the instance available in the Remote SSH extension
-
-## Commands
-
-- `GCP IAP: Configure Instance` - Add a new GCP instance to SSH config
-- `GCP IAP: Update Binary` - Manually update the gcp-iap-ssh-config binary
-- `GCP IAP: Remove Instance` - Remove an instance from SSH config
-- `GCP IAP: List Configured Instances` - Show all configured GCP instances
+5. Submit. The extension will add the host config to your SSH config file.
 
 ## Troubleshooting
 
@@ -56,30 +26,17 @@ This extension contributes the following settings:
    gcloud auth login
    ```
 
-2. Verify IAP is enabled for your project in the GCP Console
+2. Verify that you have appropriate permissions: compute.viewer and iap tunnel user at least
 
 3. Check the extension logs in VS Code's "Output" panel (select "GCP IAP SSH" from the dropdown)
 
-4. Common issues:
-   - "Binary not found": Try running "GCP IAP: Update Binary" command
-   - "Permission denied": Check your IAP and instance permissions
-   - "Connection failed": Verify your instance is running and IAP is configured
-
-## Security
-
-This extension manages SSH configurations and downloads binaries. The binary is verified against official releases from the [gcp-iap-ssh-config repository](https://github.com/krisztiansala/gcp-iap-ssh-config).
-
 ## Contributing
 
-Found a bug or have a feature request? Please open an issue on our [GitHub repository](https://github.com/yourusername/vscode-gcp-iap-ssh-config).
+Found a bug or have a feature request? Please open an issue on our [GitHub repository](https://github.com/krisztiansala/vscode-gcp-iap-ssh-config).
 
 ## License
 
 MIT
-
-## Credits
-
-This extension integrates with [gcp-iap-ssh-config](https://github.com/krisztiansala/gcp-iap-ssh-config) by Krisztian Sala.
 
 ## Development
 
@@ -126,3 +83,6 @@ To test the extension as if it were installed from the marketplace:
 ```bash
 npm run test
 ```
+
+## TODO
+- Add dry run option
