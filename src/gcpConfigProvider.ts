@@ -33,14 +33,24 @@ export class GCPConfigProvider implements vscode.WebviewViewProvider {
     private async handleSubmit(config: GCPConfig) {
         try {
             const iapService = new GCPIapService();
-            await iapService.configureIapSsh(
+            const previewConfig = await iapService.configureIapSsh(
                 config.projectId,
                 config.instanceName,
                 config.zone,
-                config.force
+                config.force,
+                config.dryRun
             );
             
-            vscode.window.showInformationMessage('Operation completed successfully');
+            if (config.dryRun && previewConfig) {
+                // Send preview back to webview with config path
+                this._view?.webview.postMessage({ 
+                    type: 'preview', 
+                    content: previewConfig,
+                    configPath: iapService.getConfigPath()
+                });
+            } else {
+                vscode.window.showInformationMessage('Operation completed successfully');
+            }
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : String(error);
             Logger.getInstance().log(`ERROR: ${errorMessage}`);
@@ -143,6 +153,44 @@ export class GCPConfigProvider implements vscode.WebviewViewProvider {
                     .codicon-refresh:before {
                         content: "\eb37";
                     }
+                    .preview-container {
+                        margin-top: 20px;
+                        padding: 10px;
+                    }
+                    .preview-header {
+                        margin-bottom: 10px;
+                        color: var(--vscode-foreground);
+                        opacity: 0.8;
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: center;
+                    }
+                    .preview-content {
+                        background: var(--vscode-editor-background);
+                        border: 1px solid var(--vscode-input-border);
+                        border-radius: 2px;
+                        white-space: pre-wrap;
+                        font-family: monospace;
+                        padding: 10px;
+                    }
+                    .copy-button {
+                        background: var(--vscode-button-background);
+                        color: var(--vscode-button-foreground);
+                        border: none;
+                        padding: 4px 8px;
+                        border-radius: 2px;
+                        cursor: pointer;
+                        font-size: 12px;
+                    }
+                    .copy-button:hover {
+                        background: var(--vscode-button-hoverBackground);
+                    }
+                    .copy-feedback {
+                        display: none;
+                        margin-left: 8px;
+                        color: var(--vscode-notificationsInfoIcon-foreground);
+                        font-size: 12px;
+                    }
                 </style>
             </head>
             <body>
@@ -166,12 +214,51 @@ export class GCPConfigProvider implements vscode.WebviewViewProvider {
                                 Force Update
                             </label>
                         </div>
+                        <div class="checkbox-group">
+                            <label>
+                                <input type="checkbox" id="dryRun">
+                                Dry Run (Preview Only)
+                            </label>
+                        </div>
                         <button type="submit">Configure Instance</button>
                     </form>
+                    <div id="previewContainer" class="preview-container" style="display: none;">
+                        <div class="preview-header">
+                            <div>
+                                The following config will be added to the SSH config file:
+                                <code id="configPath"></code>
+                            </div>
+                            <div>
+                                <button id="copyButton" class="copy-button">Copy to Clipboard</button>
+                                <span id="copyFeedback" class="copy-feedback">Copied!</span>
+                            </div>
+                        </div>
+                        <div id="previewContent" class="preview-content"></div>
+                    </div>
                 </div>
                 <script>
                     const vscode = acquireVsCodeApi();
                     const form = document.getElementById('gcpForm');
+                    const previewContainer = document.getElementById('previewContainer');
+                    const previewContent = document.getElementById('previewContent');
+                    const configPath = document.getElementById('configPath');
+                    const copyButton = document.getElementById('copyButton');
+                    const copyFeedback = document.getElementById('copyFeedback');
+
+                    copyButton.addEventListener('click', async () => {
+                        try {
+                            await navigator.clipboard.writeText(previewContent.textContent);
+                            copyFeedback.style.display = 'inline';
+                            setTimeout(() => {
+                                copyFeedback.style.display = 'none';
+                            }, 2000);
+                        } catch (err) {
+                            vscode.postMessage({ 
+                                type: 'error', 
+                                message: 'Failed to copy to clipboard' 
+                            });
+                        }
+                    });
 
                     form.onsubmit = (e) => {
                         e.preventDefault();
@@ -179,10 +266,23 @@ export class GCPConfigProvider implements vscode.WebviewViewProvider {
                             projectId: document.getElementById('projectId').value,
                             instanceName: document.getElementById('instanceName').value,
                             zone: document.getElementById('zone').value,
-                            force: document.getElementById('force').checked
+                            force: document.getElementById('force').checked,
+                            dryRun: document.getElementById('dryRun').checked
                         };
                         vscode.postMessage({ type: 'submit', config });
                     };
+
+                    window.addEventListener('message', event => {
+                        const message = event.data;
+                        switch (message.type) {
+                            case 'preview':
+                                previewContainer.style.display = 'block';
+                                configPath.textContent = message.configPath;
+                                previewContent.textContent = message.content;
+                                copyFeedback.style.display = 'none'; // Reset copy feedback
+                                break;
+                        }
+                    });
                 </script>
             </body>
             </html>

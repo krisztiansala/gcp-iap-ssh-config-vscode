@@ -21,9 +21,14 @@ export class GCPIapService {
     this.logger = Logger.getInstance();
   }
 
-  async configureIapSsh(projectId: string, instanceName: string, zone: string, force: boolean = false): Promise<void> {
+  async configureIapSsh(
+    projectId: string, 
+    instanceName: string, 
+    zone: string, 
+    force: boolean = false,
+    dryRun: boolean = false
+  ): Promise<string | void> {
     try {
-      // Get SSH command and options from gcloud
       const [sshCmd, sshOptions] = await this.getSSHCommand(projectId, instanceName, zone);
 
       if (!sshOptions) {
@@ -34,10 +39,9 @@ export class GCPIapService {
       const sshDir = path.dirname(this.sshConfigPath);
       await fs.promises.mkdir(sshDir, { recursive: true });
 
-      // Update SSH config
-      await this.updateSSHConfig(sshOptions, instanceName, force);
+      // Update SSH config or get preview
+      return this.updateSSHConfig(sshOptions, instanceName, force, dryRun);
 
-      this.logger.log(`Successfully configured IAP SSH for instance ${instanceName}`);
     } catch (error) {
       throw error;
     }
@@ -86,7 +90,12 @@ export class GCPIapService {
     }
   }
 
-  private async updateSSHConfig(sshOptions: SSHOptions, instanceName: string, force: boolean): Promise<void> {
+  private async updateSSHConfig(
+    sshOptions: SSHOptions, 
+    instanceName: string, 
+    force: boolean,
+    dryRun: boolean = false
+  ): Promise<string | void> {
     if (!sshOptions) {
       throw new Error("Failed to parse SSH command options");
     }
@@ -108,6 +117,11 @@ export class GCPIapService {
     }
 
     const configContent = configLines.join("\n");
+
+    // If dry run, return the preview instead of making changes
+    if (dryRun) {
+      return configContent;
+    }
 
     // Read existing config with improved error handling
     let existingConfig = "";
@@ -162,5 +176,9 @@ export class GCPIapService {
     await fs.promises.writeFile(this.sshConfigPath, finalConfig, { mode: 0o644 });
 
     this.logger.log(`SSH config ${entryExists ? "updated" : "added"} successfully for instance: ${hostAlias}`);
+  }
+
+  public getConfigPath(): string {
+    return this.sshConfigPath;
   }
 }

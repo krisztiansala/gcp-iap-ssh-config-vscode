@@ -3,4 +3,5 @@ export interface GCPConfig {
     instanceName: string;
     zone: string;
     force: boolean;
+    dryRun: boolean;
 } 
