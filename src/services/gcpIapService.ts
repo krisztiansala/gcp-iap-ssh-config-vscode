@@ -87,12 +87,14 @@ export class GCPIapService {
             
             // Find the matching instance config
             if (hostLine && hostLine.includes(instanceName)) {
+              this.logger.log(`Found config-ssh options for ${instanceName}`);
               for (const line of lines.slice(1)) {
                 const [key, value] = line.trim().split(/\s+(.+)/);
                 if (key && value) {
                   options[key.replace(/=/g, '')] = value;
                 }
               }
+              this.logger.log(JSON.stringify(options, null, 2));
               break;
             }
           }

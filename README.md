@@ -78,8 +78,12 @@ MIT
    ```bash
    code .
    ```
+4. Compile the extension:
+   ```bash
+   npm run compile
+   ```
 
-4. Press F5 to start debugging. This will:
+5. Press F5 to start debugging. This will:
    - Launch a new VS Code Extension Development Host
    - Load your extension in development mode
    - Enable you to set breakpoints and debug the extension
