@@ -71,30 +71,57 @@ export class GCPIapService {
       const sshCmd = stdout.trim();
       const options: SSHOptions = {};
 
-      // Extract IdentityFile from -i option
-      const iPattern = /-i\s+([^\s]+)/;
-      const iMatch = iPattern.exec(sshCmd);
-      if (iMatch && iMatch.length > 1) {
-        options["IdentityFile"] = iMatch[1].replace(/"/g, "");
-      }
+      // Check if this is a PuTTY command (Windows)
+      if (sshCmd.includes('putty.exe')) {
+        // Handle PuTTY-style command
+        // Extract IdentityFile from -i option
+        const iPattern = /-i\s+([^\s]+\.ppk)/;
+        const iMatch = iPattern.exec(sshCmd);
+        if (iMatch && iMatch.length > 1) {
+          options["IdentityFile"] = iMatch[1].replace(/"/g, "");
+        }
 
-      // Parse -o options with improved splitting
-      const parts = sshCmd.split(" -o ");
-      for (let i = 1; i < parts.length; i++) {
-        let part = parts[i];
-        if (i === parts.length - 1) {
-          const spaceIndex = part.indexOf(" ");
-          if (spaceIndex !== -1) {
-            part = part.slice(0, spaceIndex);
+        // Extract ProxyCommand
+        const proxyPattern = /-proxycmd\s+"([^"]+)"/i;
+        const proxyMatch = proxyPattern.exec(sshCmd);
+        if (proxyMatch && proxyMatch.length > 1) {
+          options["ProxyCommand"] = proxyMatch[1].replace(/\\/g, "\\\\");
+        }
+
+        // Extract username and hostname from the end of the command
+        const userHostPattern = /\s+([\w.-]+)@([\w.-]+)$/;
+        const userHostMatch = userHostPattern.exec(sshCmd);
+        if (userHostMatch && userHostMatch.length > 2) {
+          options["User"] = userHostMatch[1];
+        }
+      } else {
+        // Original Unix-style SSH command parsing
+        // Extract IdentityFile from -i option
+        const iPattern = /-i\s+([^\s]+)/;
+        const iMatch = iPattern.exec(sshCmd);
+        if (iMatch && iMatch.length > 1) {
+          options["IdentityFile"] = iMatch[1].replace(/"/g, "");
+        }
+
+        // Parse -o options with improved splitting
+        const parts = sshCmd.split(" -o ");
+        for (let i = 1; i < parts.length; i++) {
+          let part = parts[i];
+          if (i === parts.length - 1) {
+            const spaceIndex = part.indexOf(" ");
+            if (spaceIndex !== -1) {
+              part = part.slice(0, spaceIndex);
+            }
+          }
+          const keyVal = part.split(/=(.+)/);
+          if (keyVal.length >= 2) {
+            const key = keyVal[0].trim();
+            const value = keyVal[1].trim().replace(/['"]/g, "");
+            options[key] = value;
           }
         }
-        const keyVal = part.split(/=(.+)/);
-        if (keyVal.length >= 2) {
-          const key = keyVal[0].trim();
-          const value = keyVal[1].trim().replace(/['"]/g, "");
-          options[key] = value;
-        }
       }
+
       return [sshCmd, options];
     } catch (error) {
       throw new Error(`Failed to get SSH configuration from gcloud: ${error}`);
