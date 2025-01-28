@@ -78,9 +78,8 @@ export class GCPIapService {
           const { stdout: configOutput } = await execPromise(
             `gcloud compute config-ssh --dry-run --project ${projectId}`
           );
-
-          // Parse the config-ssh output
-          const configSections = configOutput.split('\n\n');
+          
+          const configSections = configOutput.split(/\r?\n\r?\n/).filter((section) => section.trim() !== "");
           for (const section of configSections) {
             const lines = section.split('\n').map(line => line.trim());
             const hostLine = lines[0];
@@ -89,9 +88,9 @@ export class GCPIapService {
             if (hostLine && hostLine.includes(instanceName)) {
               this.logger.log(`Found config-ssh options for ${instanceName}`);
               for (const line of lines.slice(1)) {
-                const [key, value] = line.trim().split(/\s+(.+)/);
+                const [key, value] = line.trim().split(/\s|=/);
                 if (key && value) {
-                  options[key.replace(/=/g, '')] = value;
+                  options[key] = value;
                 }
               }
               this.logger.log(JSON.stringify(options, null, 2));
@@ -106,7 +105,7 @@ export class GCPIapService {
         // Extract IdentityFile from -i option
         const iPattern = /-i\s+([^\s]+\.ppk)/;
         const iMatch = iPattern.exec(sshCmd);
-        if (iMatch && iMatch.length > 1) {
+        if (iMatch && iMatch.length > 1 && !('IdentityFile' in options)) {
           options["IdentityFile"] = iMatch[1].replace(/"/g, "");
         }
 
@@ -216,7 +215,7 @@ export class GCPIapService {
     }
 
     // Split into sections and filter out empty ones
-    const sections = existingConfig.split("\n\n").filter((section) => section.trim() !== "");
+    const sections = existingConfig.split(/\r?\n\r?\n/).filter((section) => section.trim() !== "");
 
     // Check if entry exists with improved line trimming
     let entryExists = false;
