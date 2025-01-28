@@ -2,7 +2,7 @@
   "name": "vscode-gcp-iap-ssh",
   "displayName": "GCP IAP SSH Config",
   "description": "Add SSH config for accessing GCP instances using Remote SSH extension through IAP",
-  "version": "0.1.0",
+  "version": "0.1.6",
   "publisher": "BitcloudSolutions",
   "repository": {
     "type": "git",
