@@ -31,31 +31,37 @@ export class GCPConfigProvider implements vscode.WebviewViewProvider {
     }
 
     private async handleSubmit(config: GCPConfig) {
-        try {
-            const iapService = new GCPIapService();
-            const previewConfig = await iapService.configureIapSsh(
-                config.projectId,
-                config.instanceName,
-                config.zone,
-                config.force,
-                config.dryRun
-            );
-            
-            if (config.dryRun && previewConfig) {
-                // Send preview back to webview with config path
-                this._view?.webview.postMessage({ 
-                    type: 'preview', 
-                    content: previewConfig,
-                    configPath: iapService.getConfigPath()
-                });
-            } else {
-                vscode.window.showInformationMessage('Operation completed successfully');
+        vscode.window.withProgress({
+            location: vscode.ProgressLocation.Notification,
+            title: "Configuring GCP IAP SSH",
+            cancellable: false
+        }, async (progress) => {
+            try {
+                const iapService = new GCPIapService();
+                const previewConfig = await iapService.configureIapSsh(
+                    config.projectId,
+                    config.instanceName,
+                    config.zone,
+                    config.force,
+                    config.dryRun,
+                    progress
+                );
+                
+                if (config.dryRun && previewConfig) {
+                    this._view?.webview.postMessage({ 
+                        type: 'preview', 
+                        content: previewConfig,
+                        configPath: iapService.getConfigPath()
+                    });
+                } else {
+                    vscode.window.showInformationMessage('Operation completed successfully');
+                }
+            } catch (error) {
+                const errorMessage = error instanceof Error ? error.message : String(error);
+                Logger.getInstance().log(`ERROR: ${errorMessage}`);
+                vscode.window.showErrorMessage(`Error: ${errorMessage}`);
             }
-        } catch (error) {
-            const errorMessage = error instanceof Error ? error.message : String(error);
-            Logger.getInstance().log(`ERROR: ${errorMessage}`);
-            vscode.window.showErrorMessage(`Error: ${errorMessage}`);
-        }
+        });
     }
 
     private _getHtmlForWebview(): string {

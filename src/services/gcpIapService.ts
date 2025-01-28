@@ -37,20 +37,22 @@ export class GCPIapService {
     instanceName: string, 
     zone: string, 
     force: boolean = false,
-    dryRun: boolean = false
+    dryRun: boolean = false,
+    progress?: vscode.Progress<{ message?: string; increment?: number }>
   ): Promise<string | void> {
     try {
+      progress?.report({ message: 'Fetching SSH configuration from gcloud...' });
       const [sshCmd, sshOptions] = await this.getSSHCommand(projectId, instanceName, zone);
 
       if (!sshOptions) {
         throw new Error("Failed to get SSH options from gcloud output");
       }
 
-      // Ensure .ssh directory exists
+      progress?.report({ message: 'Ensuring SSH directory exists...' });
       const sshDir = path.dirname(this.sshConfigPath);
       await fs.promises.mkdir(sshDir, { recursive: true });
 
-      // Update SSH config or get preview
+      progress?.report({ message: 'Updating SSH configuration...' });
       return this.updateSSHConfig(sshOptions, instanceName, force, dryRun);
 
     } catch (error) {
@@ -71,30 +73,89 @@ export class GCPIapService {
       const sshCmd = stdout.trim();
       const options: SSHOptions = {};
 
-      // Extract IdentityFile from -i option
-      const iPattern = /-i\s+([^\s]+)/;
-      const iMatch = iPattern.exec(sshCmd);
-      if (iMatch && iMatch.length > 1) {
-        options["IdentityFile"] = iMatch[1].replace(/"/g, "");
-      }
+      // Check if this is a PuTTY command (Windows)
+      if (sshCmd.includes('putty.exe')) {
+        // First get config-ssh options
+        try {
+          const { stdout: configOutput } = await execPromise(
+            `gcloud compute config-ssh --dry-run --project ${projectId}`
+          );
+          
+          const configSections = configOutput.split(/\r?\n\r?\n/).filter((section) => section.trim() !== "");
+          for (const section of configSections) {
+            const lines = section.split('\n').map(line => line.trim());
+            const hostLine = lines[0];
+            
+            // Find the matching instance config
+            if (hostLine && hostLine.includes(instanceName)) {
+              this.logger.log(`Found config-ssh options for ${instanceName}`);
+              for (const line of lines.slice(1)) {
+                const [key, value] = line.trim().split(/\s|=/);
+                if (key && value) {
+                  options[key] = value;
+                }
+              }
+              this.logger.log(JSON.stringify(options, null, 2));
+              break;
+            }
+          }
+        } catch (error) {
+          this.logger.log(`Warning: Failed to get config from config-ssh: ${error}`);
+        }
 
-      // Parse -o options with improved splitting
-      const parts = sshCmd.split(" -o ");
-      for (let i = 1; i < parts.length; i++) {
-        let part = parts[i];
-        if (i === parts.length - 1) {
-          const spaceIndex = part.indexOf(" ");
-          if (spaceIndex !== -1) {
-            part = part.slice(0, spaceIndex);
+        // Then add PuTTY-specific options
+        // Extract IdentityFile from -i option
+        const iPattern = /-i\s+([^\s]+\.ppk)/;
+        const iMatch = iPattern.exec(sshCmd);
+        if (iMatch && iMatch.length > 1 && !('IdentityFile' in options)) {
+          options["IdentityFile"] = iMatch[1].replace(/"/g, "");
+        }
+
+        // Extract ProxyCommand - using a more precise regex to handle nested quotes
+        const proxyPattern = /-proxycmd\s+"(.*--verbosity=\w+)"/i;
+        const proxyMatch = proxyPattern.exec(sshCmd);
+        if (proxyMatch && proxyMatch.length > 1) {
+          // Get the raw command and convert it to OpenSSH format
+          const proxyCmd = proxyMatch[1]
+            .replace(/\\\\/g, '\\') // Replace double backslashes
+            .replace("%port","%p");
+          options["ProxyCommand"] = proxyCmd;
+        }
+
+        // Extract username and hostname from the end of the command
+        const userHostPattern = /\s+([\w.-]+)@([\w.-]+)$/;
+        const userHostMatch = userHostPattern.exec(sshCmd);
+        if (userHostMatch && userHostMatch.length > 2) {
+          options["User"] = userHostMatch[1];
+        }
+      } else {
+        // Original Unix-style SSH command parsing
+        // Extract IdentityFile from -i option
+        const iPattern = /-i\s+([^\s]+)/;
+        const iMatch = iPattern.exec(sshCmd);
+        if (iMatch && iMatch.length > 1) {
+          options["IdentityFile"] = iMatch[1].replace(/"/g, "");
+        }
+
+        // Parse -o options with improved splitting
+        const parts = sshCmd.split(" -o ");
+        for (let i = 1; i < parts.length; i++) {
+          let part = parts[i];
+          if (i === parts.length - 1) {
+            const spaceIndex = part.indexOf(" ");
+            if (spaceIndex !== -1) {
+              part = part.slice(0, spaceIndex);
+            }
+          }
+          const keyVal = part.split(/=(.+)/);
+          if (keyVal.length >= 2) {
+            const key = keyVal[0].trim();
+            const value = keyVal[1].trim().replace(/['"]/g, "");
+            options[key] = value;
           }
         }
-        const keyVal = part.split(/=(.+)/);
-        if (keyVal.length >= 2) {
-          const key = keyVal[0].trim();
-          const value = keyVal[1].trim().replace(/['"]/g, "");
-          options[key] = value;
-        }
       }
+
       return [sshCmd, options];
     } catch (error) {
       throw new Error(`Failed to get SSH configuration from gcloud: ${error}`);
@@ -156,7 +217,7 @@ export class GCPIapService {
     }
 
     // Split into sections and filter out empty ones
-    const sections = existingConfig.split("\n\n").filter((section) => section.trim() !== "");
+    const sections = existingConfig.split(/\r?\n\r?\n/).filter((section) => section.trim() !== "");
 
     // Check if entry exists with improved line trimming
     let entryExists = false;
