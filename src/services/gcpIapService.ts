@@ -73,7 +73,34 @@ export class GCPIapService {
 
       // Check if this is a PuTTY command (Windows)
       if (sshCmd.includes('putty.exe')) {
-        // Handle PuTTY-style command
+        // First get config-ssh options
+        try {
+          const { stdout: configOutput } = await execPromise(
+            `gcloud compute config-ssh --dry-run --project ${projectId}`
+          );
+
+          // Parse the config-ssh output
+          const configSections = configOutput.split('\n\n');
+          for (const section of configSections) {
+            const lines = section.split('\n').map(line => line.trim());
+            const hostLine = lines[0];
+            
+            // Find the matching instance config
+            if (hostLine && hostLine.includes(instanceName)) {
+              for (const line of lines.slice(1)) {
+                const [key, value] = line.trim().split(/\s+(.+)/);
+                if (key && value) {
+                  options[key.replace(/=/g, '')] = value;
+                }
+              }
+              break;
+            }
+          }
+        } catch (error) {
+          this.logger.log(`Warning: Failed to get config from config-ssh: ${error}`);
+        }
+
+        // Then add PuTTY-specific options
         // Extract IdentityFile from -i option
         const iPattern = /-i\s+([^\s]+\.ppk)/;
         const iMatch = iPattern.exec(sshCmd);
@@ -81,11 +108,15 @@ export class GCPIapService {
           options["IdentityFile"] = iMatch[1].replace(/"/g, "");
         }
 
-        // Extract ProxyCommand
-        const proxyPattern = /-proxycmd\s+"([^"]+)"/i;
+        // Extract ProxyCommand - using a more precise regex to handle nested quotes
+        const proxyPattern = /-proxycmd\s+"(.*--verbosity=\w+)"/i;
         const proxyMatch = proxyPattern.exec(sshCmd);
         if (proxyMatch && proxyMatch.length > 1) {
-          options["ProxyCommand"] = proxyMatch[1].replace(/\\/g, "\\\\");
+          // Get the raw command and convert it to OpenSSH format
+          const proxyCmd = proxyMatch[1]
+            .replace(/\\\\/g, '\\') // Replace double backslashes
+            .replace("%port","%p");
+          options["ProxyCommand"] = proxyCmd;
         }
 
         // Extract username and hostname from the end of the command
