@@ -5,7 +5,7 @@ This VS Code extension simplifies connecting to Google Cloud Platform (GCP) inst
 ## Requirements
 
 - Visual Studio Code 1.60.0 or higher
-- Google Cloud SDK (`gcloud`) installed and configured
+- Google Cloud SDK (`gcloud`) installed and authenticated (`gcloud auth login`)
 - Appropriate IAP permissions configured in your GCP project
 
 ## Usage
@@ -18,6 +18,24 @@ This VS Code extension simplifies connecting to Google Cloud Platform (GCP) inst
    - Instance
    - Zone
 5. Submit. The extension will add the host config to your SSH config file.
+
+## Configuration
+
+The extension supports the following settings:
+
+- `gcpIapSsh.sshConfigPath`: Custom path to SSH config file. If not set, the extension will:
+  1. Use VS Code's `remote.SSH.configFile` setting if available
+  2. Fall back to the default `~/.ssh/config`
+- `gcpIapSsh.defaultProject`: Default GCP project ID to use
+
+You can modify these settings in VS Code's settings.json:
+
+```json
+{
+  "gcpIapSsh.sshConfigPath": "/path/to/your/ssh/config",
+  "gcpIapSsh.defaultProject": "your-default-project-id",
+}
+```
 
 ## Troubleshooting
 

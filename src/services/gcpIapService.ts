@@ -17,7 +17,18 @@ export class GCPIapService {
   private readonly logger: Logger;
 
   constructor() {
-    this.sshConfigPath = path.join(os.homedir(), ".ssh", "config");
+    // Check VS Code settings in order of precedence:
+    // 1. GCP IAP SSH custom config path
+    // 2. Remote SSH config path
+    // 3. Default ~/.ssh/config
+    const gcpConfig = vscode.workspace.getConfiguration('gcpIapSsh');
+    const remoteSSHConfig = vscode.workspace.getConfiguration('remote.SSH');
+    
+    this.sshConfigPath = 
+        gcpConfig.get<string>('sshConfigPath') ||
+        remoteSSHConfig.get<string>('configFile') ||
+        path.join(os.homedir(), ".ssh", "config");
+    
     this.logger = Logger.getInstance();
   }
 
@@ -126,9 +137,22 @@ export class GCPIapService {
     // Read existing config with improved error handling
     let existingConfig = "";
     try {
-      existingConfig = await fs.promises.readFile(this.sshConfigPath, "utf8");
-    } catch (err) {
-      throw new Error(`Error reading SSH config file: ${err}`);
+      try {
+        existingConfig = await fs.promises.readFile(this.sshConfigPath, "utf8");
+      } catch (err) {
+        if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
+          if (!force) {
+            throw new Error(`SSH config file does not exist at ${this.sshConfigPath}. Use force option to create it.`);
+          }
+          // Create empty config if force is true
+          existingConfig = "";
+          this.logger.log(`Creating new SSH config file at ${this.sshConfigPath}`);
+        } else {
+          throw new Error(`Error reading SSH config file: ${err}`);
+        }
+      }
+    } catch (error) {
+      throw error;
     }
 
     // Split into sections and filter out empty ones
