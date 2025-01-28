@@ -37,20 +37,22 @@ export class GCPIapService {
     instanceName: string, 
     zone: string, 
     force: boolean = false,
-    dryRun: boolean = false
+    dryRun: boolean = false,
+    progress?: vscode.Progress<{ message?: string; increment?: number }>
   ): Promise<string | void> {
     try {
+      progress?.report({ message: 'Fetching SSH configuration from gcloud...' });
       const [sshCmd, sshOptions] = await this.getSSHCommand(projectId, instanceName, zone);
 
       if (!sshOptions) {
         throw new Error("Failed to get SSH options from gcloud output");
       }
 
-      // Ensure .ssh directory exists
+      progress?.report({ message: 'Ensuring SSH directory exists...' });
       const sshDir = path.dirname(this.sshConfigPath);
       await fs.promises.mkdir(sshDir, { recursive: true });
 
-      // Update SSH config or get preview
+      progress?.report({ message: 'Updating SSH configuration...' });
       return this.updateSSHConfig(sshOptions, instanceName, force, dryRun);
 
     } catch (error) {
