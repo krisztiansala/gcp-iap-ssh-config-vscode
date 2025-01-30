@@ -21,40 +21,39 @@ export class GCPIapService {
     // 1. GCP IAP SSH custom config path
     // 2. Remote SSH config path
     // 3. Default ~/.ssh/config
-    const gcpConfig = vscode.workspace.getConfiguration('gcpIapSsh');
-    const remoteSSHConfig = vscode.workspace.getConfiguration('remote.SSH');
-    
-    this.sshConfigPath = 
-        gcpConfig.get<string>('sshConfigPath') ||
-        remoteSSHConfig.get<string>('configFile') ||
-        path.join(os.homedir(), ".ssh", "config");
-    
+    const gcpConfig = vscode.workspace.getConfiguration("gcpIapSsh");
+    const remoteSSHConfig = vscode.workspace.getConfiguration("remote.SSH");
+
+    this.sshConfigPath =
+      gcpConfig.get<string>("sshConfigPath") ||
+      remoteSSHConfig.get<string>("configFile") ||
+      path.join(os.homedir(), ".ssh", "config");
+
     this.logger = Logger.getInstance();
   }
 
   async configureIapSsh(
-    projectId: string, 
-    instanceName: string, 
-    zone: string, 
+    projectId: string,
+    instanceName: string,
+    zone: string,
     force: boolean = false,
     dryRun: boolean = false,
     progress?: vscode.Progress<{ message?: string; increment?: number }>
   ): Promise<string | void> {
     try {
-      progress?.report({ message: 'Fetching SSH configuration from gcloud...' });
+      progress?.report({ message: "Fetching SSH configuration from gcloud..." });
       const [sshCmd, sshOptions] = await this.getSSHCommand(projectId, instanceName, zone);
 
       if (!sshOptions) {
         throw new Error("Failed to get SSH options from gcloud output");
       }
 
-      progress?.report({ message: 'Ensuring SSH directory exists...' });
+      progress?.report({ message: "Ensuring SSH directory exists..." });
       const sshDir = path.dirname(this.sshConfigPath);
       await fs.promises.mkdir(sshDir, { recursive: true });
 
-      progress?.report({ message: 'Updating SSH configuration...' });
+      progress?.report({ message: "Updating SSH configuration..." });
       return this.updateSSHConfig(sshOptions, instanceName, force, dryRun);
-
     } catch (error) {
       throw error;
     }
@@ -74,18 +73,18 @@ export class GCPIapService {
       const options: SSHOptions = {};
 
       // Check if this is a PuTTY command (Windows)
-      if (sshCmd.includes('putty.exe')) {
+      if (sshCmd.includes("putty.exe")) {
         // First get config-ssh options
         try {
           const { stdout: configOutput } = await execPromise(
             `gcloud compute config-ssh --dry-run --project ${projectId}`
           );
-          
+
           const configSections = configOutput.split(/\r?\n\r?\n/).filter((section) => section.trim() !== "");
           for (const section of configSections) {
-            const lines = section.split('\n').map(line => line.trim());
+            const lines = section.split("\n").map((line) => line.trim());
             const hostLine = lines[0];
-            
+
             // Find the matching instance config
             if (hostLine && hostLine.includes(instanceName)) {
               this.logger.log(`Found config-ssh options for ${instanceName}`);
@@ -107,7 +106,7 @@ export class GCPIapService {
         // Extract IdentityFile from -i option
         const iPattern = /-i\s+([^\s]+\.ppk)/;
         const iMatch = iPattern.exec(sshCmd);
-        if (iMatch && iMatch.length > 1 && !('IdentityFile' in options)) {
+        if (iMatch && iMatch.length > 1 && !("IdentityFile" in options)) {
           options["IdentityFile"] = iMatch[1].replace(/"/g, "");
         }
 
@@ -117,16 +116,9 @@ export class GCPIapService {
         if (proxyMatch && proxyMatch.length > 1) {
           // Get the raw command and convert it to OpenSSH format
           const proxyCmd = proxyMatch[1]
-            .replace(/\\\\/g, '\\') // Replace double backslashes
-            .replace("%port","%p");
+            .replace(/\\\\/g, "\\") // Replace double backslashes
+            .replace("%port", "%p");
           options["ProxyCommand"] = proxyCmd;
-        }
-
-        // Extract username and hostname from the end of the command
-        const userHostPattern = /\s+([\w.-]+)@([\w.-]+)$/;
-        const userHostMatch = userHostPattern.exec(sshCmd);
-        if (userHostMatch && userHostMatch.length > 2) {
-          options["User"] = userHostMatch[1];
         }
       } else {
         // Original Unix-style SSH command parsing
@@ -156,6 +148,12 @@ export class GCPIapService {
         }
       }
 
+      // Extract username and hostname from the end of the command
+      const userHostPattern = /\s+([\w.-]+)@([\w.-]+)$/;
+      const userHostMatch = userHostPattern.exec(sshCmd);
+      if (userHostMatch && userHostMatch.length > 2) {
+        options["User"] = userHostMatch[1];
+      }
       return [sshCmd, options];
     } catch (error) {
       throw new Error(`Failed to get SSH configuration from gcloud: ${error}`);
@@ -163,8 +161,8 @@ export class GCPIapService {
   }
 
   private async updateSSHConfig(
-    sshOptions: SSHOptions, 
-    instanceName: string, 
+    sshOptions: SSHOptions,
+    instanceName: string,
     force: boolean,
     dryRun: boolean = false
   ): Promise<string | void> {
@@ -201,7 +199,7 @@ export class GCPIapService {
       try {
         existingConfig = await fs.promises.readFile(this.sshConfigPath, "utf8");
       } catch (err) {
-        if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
+        if ((err as NodeJS.ErrnoException).code === "ENOENT") {
           if (!force) {
             throw new Error(`SSH config file does not exist at ${this.sshConfigPath}. Use force option to create it.`);
           }
@@ -241,8 +239,8 @@ export class GCPIapService {
     if (force) {
       // Remove existing config for this instance if found
       for (const section of sections) {
-        const lines = section.split('\n').map(line => line.trim());
-        if (!lines.some(line => line.startsWith(`Host ${hostAlias}`))) {
+        const lines = section.split("\n").map((line) => line.trim());
+        if (!lines.some((line) => line.startsWith(`Host ${hostAlias}`))) {
           if (section.trim() !== "") {
             newSections.push(section);
           }
